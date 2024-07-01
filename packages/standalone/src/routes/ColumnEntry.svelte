@@ -9,7 +9,6 @@
     </div>
 </main>
 
-
 <style>
     .table-container {
         display: flex;

@@ -1,47 +1,54 @@
-<script>
+<script lang="ts">
+    //@ts-ignore
     import { onMount } from 'svelte';
+    //@ts-ignore
     import { coordinator, wasmConnector } from '@uwdata/mosaic-core';
+    //@ts-ignore
     import * as vg from '@uwdata/vgplot';
+    //@ts-ignore
     import ColumnProfile from './ColumnProfile.svelte';
 
-    let columnNames = [];
-    let columnTypes = [];
+    let columnNames: string[] = [];
+    let columnTypes: string[] = [];
 
     let connector;
-    let db;
+    let db: any;
 
 	let key = 0; 
 
-	let brush;
+	let brush: any;
 	
     async function initializeDatabase() {
-        connector = wasmConnector();
+        connector = wasmConnector();        
         db = await connector.getDuckDB();
         coordinator().databaseConnector(connector);
     }
 
-	async function handleFileInput(event) {
+	async function handleFileInput(event: { target: { files: any[]; }; }) {
         const file = event.target.files[0];
         if (file) {
 			if (file.type === 'text/csv') {
             	loadCSVToDuckDB(file);
-			// } else if (file.type === 'application/x-parquet') {
-			// 	loadParquetToDuckDB(file);
-			}
+            //} else {
+            
+            }
         }
     }
 
-    function loadCSVToDuckDB(csvFile) {
+    function loadCSVToDuckDB(csvFile: File) {
         if (csvFile) {
             var reader = new FileReader();
             reader.readAsText(csvFile, "UTF-8");
             reader.onload = async function (evt) {
-                db.registerFileText(csvFile.name, evt.target.result);
-                await coordinator().exec([
-                    vg.loadCSV("dataprof", csvFile.name, { replace: true })
-                ]);
-                console.log(csvFile.name + " loaded");
-                await getInfo();
+                if (evt.target) {
+                    const result = evt.target.result as string;
+                    db.registerFileText(csvFile.name, result);
+                    await coordinator().exec([
+                        vg.loadCSV("dataprof", csvFile.name, { replace: true })
+                    ]);
+                    console.log(csvFile.name + " loaded");
+                    await getInfo();
+                }
             }
         }
     }
@@ -59,7 +66,9 @@
             WHERE table_name = 'dataprof'
         `, { cache: false });
 
+        //@ts-ignore
         columnNames = Array.from(col).map(row => row.column_name);
+        //@ts-ignore
         columnTypes = Array.from(type).map(row => row.data_type);
 
         console.log(columnNames);
@@ -71,12 +80,17 @@
 
     onMount(async () => {
         await initializeDatabase();
-        document.getElementById('csvFileInput').addEventListener('input', handleFileInput);
+        
+        const element = document.getElementById('csvFileInput');
+        if (element) {
+            //@ts-ignore
+            element.addEventListener('input', handleFileInput);
+        }
     });
 </script>
 
 <div>
-    <input type="file" id="csvFileInput" accept=".csv"/>
+    <input type="file" id="csvFileInput" accept=".csv,.parquet"/>
 
 	{#key key}
     {#if columnNames.length > 0 && brush}
