@@ -16,64 +16,92 @@
 
     async function getPlot() {
         if (type == 'DOUBLE' || type == 'BIGINT') {
+            const data = await coordinator().query(`
+                SELECT 
+                    CASE 
+                        WHEN MIN("${colName}") = MAX("${colName}") THEN 'same'
+                        ELSE 'distinct'
+                    END AS result
+                FROM dataprof
+            `, { cache: false });
+            //@ts-ignore
+            const res = Array.from(data)[0].result;
+
             const element = document.querySelector(`#${uniqueId}`);
             if (element) {
-                element.replaceChildren(vg.vconcat(vg.plot(
-                    vg.rectY(
-                        vg.from("dataprof", { filterBy: brush }),
-                        { x: vg.bin(colName), y: vg.count(), fill: "steelblue", inset: 0.5 }
-                    ),
-                    vg.intervalX({ as: brush }),
-                    vg.xDomain(vg.Fixed),
-                    vg.yTickFormat("s"),
-                    vg.width(500),
-                    vg.height(80)
-                )));
+                if(res === 'distinct'){
+                    element.replaceChildren(vg.vconcat(vg.plot(
+                        vg.rectY(
+                            vg.from("dataprof", { filterBy: brush }),
+                            { x: vg.bin(colName), y: vg.count(), fill: "steelblue", inset: 0.5 }
+                        ),
+                        vg.intervalX({ as: brush }),
+                        vg.xDomain(vg.Fixed),
+                        vg.yTickFormat("s"),
+                        vg.width(500),
+                        vg.height(80)
+                    )));
+                } else {
+                    element.replaceChildren(vg.vconcat(vg.plot(
+                        vg.rectY(
+                            vg.from("dataprof", { filterBy: brush }),
+                            { x: colName, y: vg.count(), fill: "steelblue", inset: 0.5 }
+                        ),
+                        vg.intervalX({ as: brush }),
+                        vg.xDomain(vg.Fixed),
+                        vg.yTickFormat("s"),
+                        vg.width(500),
+                        vg.height(80)
+                    )));
+                }
             }
         } else if (type == 'DATE') {
-            const countOfEachDate = await coordinator().query(`
-                SELECT ${colName}, COUNT(*) AS count
+            const data = await coordinator().query(`
+                SELECT "${colName}"
                 FROM dataprof
-                GROUP BY ${colName}
             `, { cache: false });
-
             //@ts-ignore
-            const counts = Array.from(countOfEachDate).map(row => row.count);
+            const dates = Array.from(data).map(d => new Date(d[colName]).getTime());
+            const min = new Date(Math.min(...dates));
+            const max = new Date(Math.max(...dates));
+            //@ts-ignore
+            const days = (max - min) / (1000 * 60 * 60 * 24);
 
             const element = document.querySelector(`#${uniqueId}`);
             if (element) {
-                element.replaceChildren(vg.vconcat(vg.plot(
-                    vg.areaY(
-                        vg.from("dataprof", { filterBy: brush }),
-                        { x: colName, y: counts, fill: "steelblue", inset: 0.5 }
-                    ),
-                    vg.intervalX({ as: brush }),
-                    vg.width(500),
-                    vg.height(80),
-                )));
+                //check if less than 40 years 
+                if(days <= 14610){
+                    element.replaceChildren(vg.vconcat(vg.plot(
+                        vg.lineY(
+                            vg.from("dataprof", { filterBy: brush }),
+                            { x: vg.bin(colName), y: vg.count(), stroke: "steelblue", inset: 0.5}
+                        ),
+                        vg.intervalX({ as: brush }),
+                        vg.width(500),
+                        vg.height(300),
+                    )));
+                } else{
+                    element.replaceChildren(vg.vconcat(vg.plot(
+                        vg.lineY(
+                            vg.from("dataprof", { filterBy: brush }),
+                            { x: vg.bin(colName, {interval: "year", steps: 1}), y: vg.count(), stroke: "steelblue", inset: 0.5}
+                        ),
+                        vg.intervalX({ as: brush }),
+                        vg.width(500),
+                        vg.height(300),
+                    )));
+                }
             }
         } else if (type == 'VARCHAR'){
-            const countOfEachCategory = await coordinator().query(`
-                SELECT ${colName}, COUNT(*) AS frequency
-                FROM dataprof
-                WHERE ${colName} IS NOT NULL
-                GROUP BY ${colName}
-                ORDER BY frequency DESC
-                LIMIT 2;
-            `, { cache: false });
-
-            //@ts-ignore
-            const counts = Array.from(countOfEachCategory).map(row => row.frequency);
-
             const element = document.querySelector(`#${uniqueId}`);
             if (element) {
                 element.replaceChildren(vg.vconcat(vg.plot(
                     vg.barY(
                         vg.from("dataprof"),
-                        { x: colName, y: counts, fill: "steelblue", inset: 0.5, sort: {x: "-y", limit: 2}}
+                        { x: colName, y: vg.count(), fill: "steelblue", inset: 0.5, sort: {x: "-y", limit: 2}}
                     ),
-                    vg.width(500),
-                    vg.height(80),
+                    vg.width(600),
+                    vg.height(100),
                 )));
             }
         }
