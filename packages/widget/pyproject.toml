@@ -1,0 +1,36 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "mosaic-profiler-widget"
+description = "A Jupyter widget for Mosaic's Data Profiler"
+dynamic = ["version"]
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+  "anywidget>=0.9.0"
+]
+
+[tool.hatch.build]
+artifacts = [
+  "mosaic_widget/static/"
+]
+
+[project.optional-dependencies]
+dev = [
+  "jupyterlab"
+]
+
+[tool.hatch.envs.default]
+python = "3.11"
+features = ["dev"]
+installer = "uv"
+
+[tool.hatch.version]
+path = "package.json"
+pattern = "\"version\": \"(?P<version>.+?)\""
+
+[tool.ruff]
+extend-include = ["*.ipynb"]
+lint.ignore = ["G004", "TRY301", "EM102", "TRY003", "FBT002"]

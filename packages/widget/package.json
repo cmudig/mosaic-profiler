@@ -1,0 +1,25 @@
+{
+  "name": "mosaic_profiler_widget",
+  "version": "0.0.1",
+  "private": true,
+  "license": "BSD-3-Clause",
+  "type": "module",
+  "scripts": {
+    "build": "esbuild js/widget.ts --minify --format=esm --bundle --outdir=src/test/static",
+    "dev": "vite",
+    "test": "tsc -p jsconfig.json",
+    "lint": "eslint src",
+    "prepublishOnly": "rimraf dist && mkdir dist && npm run test && npm run lint && hatch fmt --check && npm run build && hatch build",
+    "publish": "hatch publish --user __token__",
+    "release": "npm run prepublishOnly && npm run publish",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@anywidget/vite": "^0.2.0",
+    "anywidget": "^0.9.13",
+    "typescript": "^5.5.2"
+  }, 
+  "dependencies": {
+    "mosaic-profiler-standalone": "file:../mosaic-profiler-standalone"
+  }
+}
