@@ -1,4 +1,5 @@
 <script lang="ts">
+    //@ts-ignore
     import MyComponent from './ColumnEntry.svelte';
     //@ts-ignore
 	import { onMount} from 'svelte';

@@ -1,7 +1,10 @@
 {
-	"name": "mosaic-profiler",
+	"name": "mosaic-profiler-standalone",
 	"version": "0.0.1",
-	"private": true,
+	"main": "src/app.html",
+	"exports": {
+		"./routes/ColumnProfile.svelte": "./src/routes/ColumnProfile.svelte"
+	},
 	"scripts": {
 		"dev": "vite dev",
 		"build": "vite build",
