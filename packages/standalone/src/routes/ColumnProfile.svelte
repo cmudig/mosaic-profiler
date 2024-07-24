@@ -13,6 +13,7 @@
     export let colName: string;
     export let type: string;
     export let brush: any;
+    export let dbId: string;
     var uniqueId = `plot-${uuidv4()}`;
 
     async function getPlot() {
@@ -23,7 +24,7 @@
                         WHEN MIN("${colName}") = MAX("${colName}") THEN 'same'
                         ELSE 'distinct'
                     END AS result
-                FROM dataprof
+                FROM "${dbId}"
             `, { cache: false });
             //@ts-ignore
             const res = Array.from(data)[0].result;
@@ -33,7 +34,7 @@
                 if(res === 'distinct'){
                     element.replaceChildren(vg.vconcat(vg.plot(
                         vg.rectY(
-                            vg.from("dataprof", { filterBy: brush }),
+                            vg.from(dbId, { filterBy: brush }),
                             { x: vg.bin(colName), y: vg.count(), fill: "steelblue", inset: 0.5 }
                         ),
                         vg.intervalX({ as: brush }),
@@ -45,7 +46,7 @@
                 } else {
                     element.replaceChildren(vg.vconcat(vg.plot(
                         vg.rectY(
-                            vg.from("dataprof", { filterBy: brush }),
+                            vg.from(dbId, { filterBy: brush }),
                             { x: colName, y: vg.count(), fill: "steelblue", inset: 0.5 }
                         ),
                         vg.intervalX({ as: brush }),
@@ -59,7 +60,7 @@
         } else if (type == 'DATE') {
             const data = await coordinator().query(`
                 SELECT "${colName}"
-                FROM dataprof
+                FROM "${dbId}"
             `, { cache: false });
             //@ts-ignore
             const dates = Array.from(data).map(d => new Date(d[colName]).getTime());
@@ -74,7 +75,7 @@
                 if(days <= 14610){
                     element.replaceChildren(vg.vconcat(vg.plot(
                         vg.lineY(
-                            vg.from("dataprof", { filterBy: brush }),
+                            vg.from(dbId, { filterBy: brush }),
                             { x: vg.bin(colName), y: vg.count(), stroke: "steelblue", inset: 0.5}
                         ),
                         vg.intervalX({ as: brush }),
@@ -84,7 +85,7 @@
                 } else{
                     element.replaceChildren(vg.vconcat(vg.plot(
                         vg.lineY(
-                            vg.from("dataprof", { filterBy: brush }),
+                            vg.from(dbId, { filterBy: brush }),
                             { x: vg.bin(colName, {interval: "year", steps: 1}), y: vg.count(), stroke: "steelblue", inset: 0.5}
                         ),
                         vg.intervalX({ as: brush }),
@@ -98,7 +99,7 @@
             if (element) {
                 element.replaceChildren(vg.vconcat(vg.plot(
                     vg.barY(
-                        vg.from("dataprof"),
+                        vg.from(dbId),
                         { x: colName, y: vg.count(), fill: "steelblue", inset: 0.5, sort: {x: "-y", limit: 2}}
                     ),
                     vg.width(600),
