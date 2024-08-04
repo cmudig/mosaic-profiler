@@ -26,6 +26,11 @@ dev = [
 python = "3.11"
 features = ["dev"]
 installer = "uv"
+dependencies = [
+    "pandas",
+    "duckdb",
+    "pyarrow"
+]
 
 [tool.hatch.version]
 path = "package.json"

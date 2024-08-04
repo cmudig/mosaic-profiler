@@ -17,26 +17,29 @@
         border: 1px solid #ccc;
         border-radius: 4px;
         padding: 12px;
-        width: 400px; /* Fixed width */
+        width: 100%; 
+        max-width: 500px; 
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        box-sizing: border-box; 
+        font-family: -apple-system, BlinkMacSystemFont, "avenir next", avenir, helvetica, "helvetica neue", ubuntu, roboto, noto, "segoe ui", arial, sans-serif;
     }
 
     .left-column {
-        flex: 1;
-        padding-right: 6px; /* Adjust padding for spacing */
+        flex: 1 1 auto; 
+        min-width: 150px;
+        padding-right: 6px; 
     }
 
     .right-column {
-        flex: 1;
-        padding-left: 6px; /* Adjust padding for spacing */
+        flex: 0 1 auto;
+        padding-left: 6px; 
         text-align: right;
-        border-left: 1px solid #ccc; /* Border between left and right */
-        padding-left: 6px; /* Add padding to the right column */
+        padding-left: 6px; 
     }
 
     @media (max-width: 768px) {
         .table-container {
-            width: 100%; /* Full width on smaller screens */
+            width: 100%; 
         }
     }
 </style>

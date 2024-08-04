@@ -20,6 +20,11 @@
     "typescript": "^5.5.2"
   }, 
   "dependencies": {
-    "mosaic-profiler-standalone": "file:../mosaic-profiler-standalone"
+    "mosaic-profiler-standalone": "file:../mosaic-profiler-standalone",
+    "uuid":"10.0.0",
+    "apache-arrow":"17.0.0",
+    "@uwdata/mosaic-core": "^0.10.0",
+		"@uwdata/vgplot": "^0.10.0",
+    "svelte": "^4.2.7"
   }
 }
