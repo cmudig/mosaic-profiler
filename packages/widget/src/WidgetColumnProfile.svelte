@@ -1,8 +1,8 @@
 <script lang="ts">
     //@ts-ignore
-    import ColumnEntry from './ColumnEntry.svelte';
+    import ColumnEntry from 'mosaic-profiler-standalone/routes/ColumnEntry.svelte';
     //@ts-ignore
-	import { onMount} from 'svelte';
+	import { onMount } from 'svelte';
     //@ts-ignore
     import { coordinator } from '@uwdata/mosaic-core';
     //@ts-ignore
@@ -40,8 +40,8 @@
                         vg.intervalX({ as: brush }),
                         vg.xDomain(vg.Fixed),
                         vg.yTickFormat("s"),
-                        vg.width(500),
-                        vg.height(200)
+                        vg.width(400),
+                        vg.height(100)
                     )));
                 } else {
                     element.replaceChildren(vg.vconcat(vg.plot(
@@ -52,8 +52,8 @@
                         vg.intervalX({ as: brush }),
                         vg.xDomain(vg.Fixed),
                         vg.yTickFormat("s"),
-                        vg.width(500),
-                        vg.height(200)
+                        vg.width(400),
+                        vg.height(100)
                     )));
                 }
             }
@@ -79,8 +79,8 @@
                             { x: vg.bin(colName), y: vg.count(), stroke: "steelblue", inset: 0.5}
                         ),
                         vg.intervalX({ as: brush }),
-                        vg.width(500),
-                        vg.height(200),
+                        vg.width(400),
+                        vg.height(100),
 
                     )));
                 } else{
@@ -90,8 +90,8 @@
                             { x: vg.bin(colName, {interval: "year", steps: 1}), y: vg.count(), stroke: "steelblue", inset: 0.5}
                         ),
                         vg.intervalX({ as: brush }),
-                        vg.width(500),
-                        vg.height(200),
+                        vg.width(400),
+                        vg.height(100),
                     )));
                 }
             }
@@ -103,8 +103,8 @@
                         vg.from(dbId),
                         { x: colName, y: vg.count(), fill: "steelblue", inset: 0.5, sort: {x: "-y", limit: 2}}
                     ),
-                    vg.width(500),
-                    vg.height(200),
+                    vg.width(400),
+                    vg.height(100),
                 )));
             }
         }

@@ -1,0 +1,69 @@
+div, p, input {
+    font-family: -apple-system, BlinkMacSystemFont, "avenir next", avenir, helvetica, "helvetica neue", ubuntu, roboto, noto, "segoe ui", arial, sans-serif;
+    text-align: center;
+}
+.container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding-top: 10px; 
+}
+.header {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start; 
+    position: relative;
+    width: 100%;
+}
+.logo {
+    margin-top: 20px;
+    margin-left: 20px;
+}
+.VPImage {
+    height: 25px;
+}
+.dark {
+    display: none;
+}
+.light {
+    display: block;
+}
+@media (prefers-color-scheme: dark) {
+    .dark {
+        display: block;
+    }
+    .light {
+        display: none;
+    }
+}
+.file-input-wrapper {
+    margin: 20px 0;
+    position: relative;
+    display: inline-block;
+}
+.file-input-label {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 200px;
+    height: 60px; 
+    background-color: #f0f0f0;
+    border-radius: 8px; 
+    cursor: pointer; 
+    text-align: center;
+    font-size: 16px; 
+    color: #333; 
+    font-weight: bold; 
+    transition: background-color 0.3s, border-color 0.3s;
+}
+.file-input-label:hover {
+    background-color: #e0e0e0; 
+    border-color: #bbb; 
+}
+.file-input-label input[type="file"] {
+    position: absolute;
+    width: 100%;
+    height: 100%;
+    opacity: 0;
+    cursor: pointer;
+}
