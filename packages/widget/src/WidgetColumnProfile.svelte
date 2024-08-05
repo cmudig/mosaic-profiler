@@ -57,7 +57,7 @@
                     )));
                 }
             }
-        } else if (type == 'DATE') {
+        } else if (type == 'DATE' || type == 'TIMESTAMP_NS') {
             const data = await coordinator().query(`
                 SELECT "${colName}"
                 FROM "${dbId}"
