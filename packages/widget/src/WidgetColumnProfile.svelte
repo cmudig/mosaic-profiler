@@ -2,7 +2,7 @@
     //@ts-ignore
     import ColumnEntry from 'mosaic-profiler-standalone/routes/ColumnEntry.svelte';
     //@ts-ignore
-	import { onMount } from 'svelte';
+    import { onMount } from 'svelte';
     //@ts-ignore
     import { coordinator } from '@uwdata/mosaic-core';
     //@ts-ignore
@@ -15,6 +15,16 @@
     export let brush: any;
     export let dbId: string;
     var uniqueId = `plot-${uuidv4()}`;
+
+    function formatXAxisTick(value: number) {
+        if (value >= 1e9) {
+            return (value / 1e9).toFixed(1) + 'B'; 
+        } else if (value >= 1e6) {
+            return (value / 1e6).toFixed(1) + 'M'; 
+        } else {
+            return value; 
+        }
+    }
 
     async function getPlot() {
         if (type == 'DOUBLE' || type == 'BIGINT' || type == 'TINYINT') {
@@ -41,7 +51,8 @@
                         vg.xDomain(vg.Fixed),
                         vg.yTickFormat("s"),
                         vg.width(400),
-                        vg.height(100)
+                        vg.height(100),
+                        vg.xTickFormat(formatXAxisTick) 
                     )));
                 } else {
                     element.replaceChildren(vg.vconcat(vg.plot(
@@ -53,7 +64,8 @@
                         vg.xDomain(vg.Fixed),
                         vg.yTickFormat("s"),
                         vg.width(400),
-                        vg.height(100)
+                        vg.height(100),
+                        vg.xTickFormat(formatXAxisTick) 
                     )));
                 }
             }
@@ -120,9 +132,9 @@
         <div id="{uniqueId}"></div>
     </svelte:fragment>
 
-	<svelte:fragment slot="left">
-		<span>{colName}</span>
-	</svelte:fragment>
+    <svelte:fragment slot="left">
+        <span>{colName}</span>
+    </svelte:fragment>
 </ColumnEntry>
 
 
