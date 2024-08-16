@@ -10,6 +10,10 @@
     import ColumnProfile from './ColumnProfile.svelte';
     //@ts-ignore
     import { v4 as uuidv4 } from 'uuid';
+    //@ts-ignore
+    import debounce from 'lodash/debounce';
+    //@ts-ignore
+    import { pushState, replaceState } from '$app/navigation';
 
     let columnNames: string[] = [];
     let columnTypes: string[] = [];
@@ -17,13 +21,14 @@
     let connector;
     let db: any;
 
-	let key = 0; 
+    let key = 0; 
     var dbId = 't_' + uuidv4().replace(/-/g, '');
 
-	let brush: any;
+    let brush: any;
     let url = '';
     let generatedURL = '';
     let stateString = '';
+    let displayUpdated = false;
 
     async function initializeDatabase() {
         connector = wasmConnector();        
@@ -41,24 +46,24 @@
         await coordinator().exec([
             vg.loadCSV(dbId, "temp", { replace: true })
         ]);
-        console.log("temp loaded");
+        console.log("CSV loaded from URL");
         await getInfo();
         
     }
 
-	async function handleFileInput(event: { target: { files: any[]; }; }) {
+    async function handleFileInput(event: { target: { files: any[]; }; }) {
         url = '';
         const file = event.target.files[0];
         if (file) {
-			if (file.type === 'text/csv') {
-            	loadCSVToDuckDB(file);
+            if (file.type === 'text/csv') {
+                loadCSVToDuckDB(file);
             } else if(file.name.endsWith(".parquet")){
                 await db.registerFileBuffer(
                     file.name,
                     new Uint8Array(await file.arrayBuffer()),
                 );
                 await coordinator().exec([
-			        vg.loadParquet(dbId, file.name, { replace: true })
+                    vg.loadParquet(dbId, file.name, { replace: true })
                 ]);
                 await getInfo();
             }
@@ -102,10 +107,13 @@
         //@ts-ignore
         columnTypes = Array.from(type).map(row => row.data_type);
 
-		key += 1;
+        key += 1;
 
-        await tick()
-        updateDisplay(stateString);
+        await tick();
+        if(stateString.length > 0 && !displayUpdated){
+            updateDisplay(stateString);
+            displayUpdated = true;
+        }
     }
 
     async function updateDisplay(stateString : string) {
@@ -125,42 +133,98 @@
     }
 
     function saveAsURL() {
-        let brushField = brush.active.predicate._deps[0];
-        let brushVal = brush.value;
-        console.log(brushVal);
-        
-        const state = {
-            brushField,
-            brushVal,
-        };
+        try{
+            let brushField = brush.active.predicate._deps[0];
+            let brushVal = brush.value;
+            console.log(brushVal);
+            
+            const state = {
+                brushField,
+                brushVal,
+            };
 
-        const jsonString = JSON.stringify(state);
-        const encodedJson = encodeURIComponent(jsonString);
+            const jsonString = JSON.stringify(state);
+            const encodedJson = encodeURIComponent(jsonString);
 
-        generatedURL = `${window.location.origin}${window.location.pathname}#url=${url}#state=${encodedJson}`;
+            generatedURL = `${window.location.origin}${window.location.pathname}#url=${url}#state=${encodedJson}`;
+        } catch(error){
+            console.log("No URL update");
+        }
     }
 
-    onMount(async () => {        
+    const debouncedPushState = debounce(pushState, 200);
+
+    onMount(async () => {   
+        displayUpdated = false;
+        document.title = "Mosaic Profiler";
+        const wasReloaded = sessionStorage.getItem('reloaded') === 'true';
+
+        if (wasReloaded) {
+            url = '';
+            stateString = '';
+            window.history.pushState(null, "", window.location.pathname);
+            sessionStorage.removeItem('reloaded');
+        }
+        window.addEventListener('beforeunload', () => {
+            sessionStorage.setItem('reloaded', 'true');
+        });
+
         await initializeDatabase();
 
-        const fullURL = window.location.href;
-        if (fullURL.includes('#url') && fullURL.includes('#state')) {
-            const hashString = window.location.hash.substring(1); 
-            const hashParts = hashString.split('#'); 
+        async function handlePopState() {
+            const fullURL = window.location.href;
+            if (fullURL.includes('#url') || fullURL.includes('#state')) {
+                const hashString = window.location.hash.substring(1); 
+                const hashParts = hashString.split('#'); 
 
-            hashParts.forEach(part => {
-                if (part.startsWith('url=')) {
-                    url = decodeURIComponent(part.substring(4)); 
-                } else if (part.startsWith('state=')) {
-                    stateString = decodeURIComponent(part.substring(6)); 
+                hashParts.forEach(part => {
+                    if (part.startsWith('url=')) {
+                        url = decodeURIComponent(part.substring(4)); 
+                    } else if (part.startsWith('state=')) {
+                        stateString = decodeURIComponent(part.substring(6)); 
+                    }
+                });
+
+                if (url.length > 0) {
+                    await handleURL();
                 }
-            });
 
-            if(url.length > 0){
-                await handleURL();
+                if (stateString.length > 0) {
+                    updateDisplay(stateString);
+                }
             }
         }
-        
+
+        window.addEventListener('popstate', handlePopState);
+
+        handlePopState();
+
+        const targetNode = document.getElementById('profiler');
+
+        const config = {
+            childList: true, 
+            attributes: true, 
+            subtree: true,    
+            characterData: true 
+        };
+
+        const callback = function(mutationsList: any, observer: any) {
+            for (let mutation of mutationsList) {
+                if (mutation.type === 'attributes' && brush._resolved.length > 0) {
+                    saveAsURL();
+                    debouncedPushState(generatedURL);
+                } else if(mutation.type === 'attributes'){
+                    stateString = "";
+                    url.length > 0 ? 
+                    debouncedPushState(`${window.location.origin}${window.location.pathname}#url=${url}`) 
+                    : debouncedPushState(window.location.pathname);
+                }
+            }
+        };
+
+        const observer = new MutationObserver(callback);
+        observer.observe(targetNode, config);
+
         const fileInputElement = document.getElementById('csvFileInput');
         if (fileInputElement) {
             //@ts-ignore
@@ -195,30 +259,18 @@
         </div>
     </div>
 
-    <div class="button-container">
-        <button on:click={saveAsURL}>Save as URL</button>
+    <div id="profiler">
+        {#key key}
+        {#if columnNames.length > 0 && brush}
+            {#each columnNames as column, index}
+                <ColumnProfile
+                    colName={column}
+                    type={columnTypes[index]}
+                    brush={brush}
+                    dbId={dbId}
+                />
+            {/each}
+        {/if}
+        {/key}
     </div>
-
-    {#if generatedURL}
-        <div class="url-output">
-            <button class="close-button" on:click={() => generatedURL = ''}>×</button>
-            <p>Copy this URL:</p>
-            <textarea readonly>{generatedURL}</textarea>
-            <button class="copy-button" on:click={() => navigator.clipboard.writeText(generatedURL)}>Copy to clipboard</button>
-        </div>
-    {/if}
-
-    {#key key}
-    {#if columnNames.length > 0 && brush}
-        {#each columnNames as column, index}
-            <ColumnProfile
-                colName={column}
-                type={columnTypes[index]}
-                brush={brush}
-                dbId={dbId}
-            />
-        {/each}
-    {/if}
-    {/key}
 </div>
-
