@@ -16,6 +16,16 @@
     export let dbId: string;
     var uniqueId = `plot-${uuidv4()}`;
 
+    function formatXAxisTick(value: number) {
+        if (value >= 1e9) {
+            return (value / 1e9).toFixed(1) + 'B'; 
+        } else if (value >= 1e6) {
+            return (value / 1e6).toFixed(1) + 'M'; 
+        } else {
+            return value; 
+        }
+    }
+
     async function getPlot() {
         if (type == 'DOUBLE' || type == 'BIGINT' || type == 'TINYINT') {
             const data = await coordinator().query(`
@@ -41,7 +51,8 @@
                         vg.xDomain(vg.Fixed),
                         vg.yTickFormat("s"),
                         vg.width(400),
-                        vg.height(100)
+                        vg.height(100),
+                        vg.xTickFormat(formatXAxisTick) 
                     )));
                 } else {
                     element.replaceChildren(vg.vconcat(vg.plot(
@@ -53,7 +64,8 @@
                         vg.xDomain(vg.Fixed),
                         vg.yTickFormat("s"),
                         vg.width(400),
-                        vg.height(100)
+                        vg.height(100),
+                        vg.xTickFormat(formatXAxisTick) 
                     )));
                 }
             }
