@@ -48,11 +48,13 @@
         ]);
         console.log("CSV loaded from URL");
         await getInfo();
+        pushState(`${window.location.origin}${window.location.pathname}#url=${url}`);
         
     }
 
     async function handleFileInput(event: { target: { files: any[]; }; }) {
         url = '';
+        pushState(window.location.pathname);
         const file = event.target.files[0];
         if (file) {
             if (file.type === 'text/csv') {
