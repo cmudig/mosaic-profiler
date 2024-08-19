@@ -3,7 +3,9 @@
     //@ts-ignore
     import { onMount, tick } from 'svelte';
     //@ts-ignore
-    import { coordinator, wasmConnector, clauseInterval } from '@uwdata/mosaic-core';
+    import { coordinator, wasmConnector, clauseIntervals, clausePoint } from '@uwdata/mosaic-core';
+    //@ts-ignore
+    import { and, isNotDistinct, literal } from '@uwdata/mosaic-sql';
     //@ts-ignore
     import * as vg from '@uwdata/vgplot';
     //@ts-ignore
@@ -13,7 +15,7 @@
     //@ts-ignore
     import debounce from 'lodash/debounce';
     //@ts-ignore
-    import { pushState, replaceState } from '$app/navigation';
+    import { pushState } from '$app/navigation';
 
     let columnNames: string[] = [];
     let columnTypes: string[] = [];
@@ -25,8 +27,9 @@
     var dbId = 't_' + uuidv4().replace(/-/g, '');
 
     let brush: any;
+    let click: any;
     let url = '';
-    let generatedURL = '';
+    let generatedURL;
     let stateString = '';
     let displayUpdated = false;
 
@@ -34,6 +37,28 @@
         connector = wasmConnector();        
         db = await connector.getDuckDB();
         coordinator().databaseConnector(connector);
+    }
+
+    function clausePoints(fields, value, {
+        source,
+        clients = source ? new Set([source]) : undefined
+    }) {
+        /** @type {SQLExpression | null} */
+        let predicate = null;
+        if (value) {
+            const list = value.map((v, i) => {
+                const quotedValue = typeof v === 'object' ? `${v}` : v;
+                return isNotDistinct(fields[i], literal(quotedValue));
+            });
+            predicate = list.length > 1 ? and(list) : list[0];
+        }
+        return {
+            meta: { type: 'point' },
+            source,
+            clients,
+            value,
+            predicate
+        };
     }
 
     async function handleURL(){
@@ -48,13 +73,18 @@
         ]);
         console.log("CSV loaded from URL");
         await getInfo();
-        pushState(`${window.location.origin}${window.location.pathname}#url=${url}`);
+        !window.location.href.includes("#url") ? 
+        pushState(`${window.location.origin}${window.location.pathname}#url=${url}`)
+        : {};
         
     }
 
     async function handleFileInput(event: { target: { files: any[]; }; }) {
-        url = '';
-        pushState(window.location.pathname);
+        if(url.length > 0){
+            url = '';
+            pushState(window.location.pathname);   
+        }
+
         const file = event.target.files[0];
         if (file) {
             if (file.type === 'text/csv') {
@@ -104,6 +134,7 @@
         `, { cache: false });
 
         brush = vg.Selection.crossfilter();
+        click = vg.Selection.single({cross: true});
         //@ts-ignore
         columnNames = Array.from(col).map(row => row.column_name);
         //@ts-ignore
@@ -121,34 +152,70 @@
     async function updateDisplay(stateString : string) {
         const clients = coordinator().clients;
 
-        const decodedString = decodeURIComponent(stateString);
-        const state = JSON.parse(decodedString);
+        const state = JSON.parse(stateString);
 
-        if(typeof state.brushVal[0] != 'number'){
-            state.brushVal = state.brushVal.map((val: string) => new Date(val));
+        for (let i = 0; i < state.intervalVal.length; i++) {
+            if(state.intervalVal[i].some(item => typeof item === 'string')){
+                state.intervalVal[i] = state.intervalVal[i].map((val: string) => new Date(val));
+            }
         }
-        clients.forEach((client: any) => {
-            brush.update(
-                clauseInterval(state.brushField, state.brushVal, { source: client })
-            );
+
+        await clients.forEach(async client => {
+            if(state.pointVal.length > 0){  
+                await brush.update(
+                    clausePoints(state.pointField, state.pointVal, {}),
+                );    
+                      
+            }
+
+            if(state.intervalVal.length > 0){
+                await brush.update(
+                    clauseIntervals(state.intervalField, state.intervalVal, { source: client })
+                );
+            }
         });
     }
 
     function saveAsURL() {
         try{
-            let brushField = brush.active.predicate._deps[0];
-            let brushVal = brush.value;
-            console.log(brushVal);
-            
+            if (!brush.clauses[0].source) {
+                generatedURL = window.location.href;
+                return;
+            }
+
+            let pointField = [];
+            let pointVal = [];
+
+            let intervalField = [];
+            let intervalVal = [];
+            let p = 0;
+            let i = 0;
+
+            brush.clauses.forEach((clause) => {
+                if(clause.value.length == 1){
+                    pointVal[p] = clause.value[0];
+                    pointField[p] = clause.source.as ? clause.source.as[0] : clause.source.field;
+                    p++;
+                } else if(clause.value.length > 1) {
+                    intervalVal[i] = clause.value;
+                    intervalField[i] = clause.source.as ? clause.source.as[0] : clause.source.field;
+                    i++;
+                }
+            });
+
             const state = {
-                brushField,
-                brushVal,
+                pointField,
+                pointVal,
+                intervalField,
+                intervalVal
             };
 
             const jsonString = JSON.stringify(state);
             const encodedJson = encodeURIComponent(jsonString);
 
-            generatedURL = `${window.location.origin}${window.location.pathname}#url=${url}#state=${encodedJson}`;
+            if(!pointField.includes(undefined) && !intervalField.includes(undefined)){
+                generatedURL = `${window.location.origin}${window.location.pathname}#url=${url}#state=${encodedJson}`;            
+            }
         } catch(error){
             console.log("No URL update");
         }
@@ -158,6 +225,7 @@
 
     onMount(async () => {   
         displayUpdated = false;
+        generatedURL = window.location.href;
         document.title = "Mosaic Profiler";
         const wasReloaded = sessionStorage.getItem('reloaded') === 'true';
 
@@ -212,10 +280,11 @@
 
         const callback = function(mutationsList: any, observer: any) {
             for (let mutation of mutationsList) {
-                if (mutation.type === 'attributes' && brush._resolved.length > 0) {
+                if (mutation.type === 'attributes' || mutation.type === 'childList' && brush._resolved.length > 0) {
                     saveAsURL();
                     debouncedPushState(generatedURL);
-                } else if(mutation.type === 'attributes'){
+                } 
+                else if(mutation.type === 'attributes'){
                     stateString = "";
                     url.length > 0 ? 
                     debouncedPushState(`${window.location.origin}${window.location.pathname}#url=${url}`) 
@@ -269,6 +338,7 @@
                     colName={column}
                     type={columnTypes[index]}
                     brush={brush}
+                    click={click}
                     dbId={dbId}
                 />
             {/each}

@@ -18,7 +18,7 @@
         border-radius: 4px;
         padding: 12px;
         width: 100%; 
-        max-width: 500px; 
+        max-width: 600px; 
         box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         box-sizing: border-box; 
         font-family: -apple-system, BlinkMacSystemFont, "avenir next", avenir, helvetica, "helvetica neue", ubuntu, roboto, noto, "segoe ui", arial, sans-serif;
