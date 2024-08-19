@@ -31,7 +31,7 @@
         if(!value){
             return "null";
         }
-        if(brush._value[0].value){
+        if(brush._value[0] && brush._value[0].value){
             for(let v of brush._value[0].value){
                 if(v[0] === value){
                     return value;
