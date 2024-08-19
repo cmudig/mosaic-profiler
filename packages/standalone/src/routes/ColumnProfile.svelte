@@ -13,6 +13,7 @@
     export let colName: string;
     export let type: string;
     export let brush: any;
+    export let click: any;
     export let dbId: string;
     var uniqueId = `plot-${uuidv4()}`;
 
@@ -23,6 +24,25 @@
             return (value / 1e6).toFixed(1) + 'M'; 
         } else {
             return value; 
+        }
+    }
+
+    function formatStringTick(value: string) {
+        if(!value){
+            return "null";
+        }
+        if(brush._value[0].value){
+            for(let v of brush._value[0].value){
+                if(v[0] === value){
+                    return value;
+                }
+            }
+        }
+        if(value.length <= 10 || (brush.value && (brush.value[0][0]) === value)){
+            return value;
+        }
+        if (value.length > 10) {
+            return value.substring(0, 10) + '...'; 
         }
     }
 
@@ -113,10 +133,16 @@
                 element.replaceChildren(vg.vconcat(vg.plot(
                     vg.barY(
                         vg.from(dbId, { filterBy: brush }),
-                        { x: colName, y: vg.count(), fill: "steelblue", inset: 0.5, sort: {x: "-y", limit: 2}}
+                        { x: colName, y: vg.count(), inset: 0.5, sort: {x: "-y", limit: 10}, fill: "#ccc", fillOpacity: 0.2}
                     ),
-                    vg.width(500),
-                    vg.height(200)
+                    vg.barY(
+                        vg.from(dbId, { filterBy: click }),
+                        { x: colName, y: vg.count(), sort: {x: "-y", limit: 10}, fill: "steelblue"}
+                    ),
+                    vg.toggleX({ as: brush, peers: false }), 
+                    vg.xTickFormat(formatStringTick),
+                     vg.width(700),
+                    vg.height(250)
                 )));
             }
         }
