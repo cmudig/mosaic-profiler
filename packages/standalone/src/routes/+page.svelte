@@ -63,15 +63,26 @@
 
     async function handleURL(){
         const response = await fetch(url);
-        if (!response.ok) {
-            throw new Error(`Error fetching CSV: ${response.statusText}`);
+        if(url.endsWith(".csv")){
+            if (!response.ok) {
+                throw new Error(`Error fetching CSV: ${response.statusText}`);
+            }
+            const csvText = await response.text();
+            db.registerFileText("csv", csvText);
+            await coordinator().exec([
+                vg.loadCSV(dbId, "csv", { replace: true })
+            ]);
+            console.log("CSV loaded from URL");            
+        } else if(url.endsWith(".parquet")){
+            const arrayBuffer = await response.arrayBuffer();
+            const uint8Array = new Uint8Array(arrayBuffer);
+
+            await db.registerFileBuffer('parquet', uint8Array);
+            await coordinator().exec([
+                vg.loadParquet(dbId, "parquet", { replace: true })
+            ]);
         }
-        const csvText = await response.text();
-        db.registerFileText("temp", csvText);
-        await coordinator().exec([
-            vg.loadCSV(dbId, "temp", { replace: true })
-        ]);
-        console.log("CSV loaded from URL");
+
         await getInfo();
         !window.location.href.includes("#url") ? 
         pushState(`${window.location.origin}${window.location.pathname}#url=${url}`)
@@ -194,11 +205,11 @@
             brush.clauses.forEach((clause) => {
                 if(clause.value.length == 1){
                     pointVal[p] = clause.value[0];
-                    pointField[p] = clause.source.as ? clause.source.as[0] : clause.source.field;
+                    pointField[p] = (clause.source && clause.source.as) ? clause.source.as[0] : clause.source.field;
                     p++;
                 } else if(clause.value.length > 1) {
                     intervalVal[i] = clause.value;
-                    intervalField[i] = clause.source.as ? clause.source.as[0] : clause.source.field;
+                    intervalField[i] = (clause.source && clause.source.as) ? clause.source.as[0] : clause.source.field;
                     i++;
                 }
             });
@@ -217,6 +228,7 @@
                 generatedURL = `${window.location.origin}${window.location.pathname}#url=${url}#state=${encodedJson}`;            
             }
         } catch(error){
+            console.log(error);
             console.log("No URL update");
         }
     }
