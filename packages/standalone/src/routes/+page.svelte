@@ -3,7 +3,7 @@
     //@ts-ignore
     import { onMount, tick } from 'svelte';
     //@ts-ignore
-    import { coordinator, wasmConnector, clauseIntervals, clausePoint } from '@uwdata/mosaic-core';
+    import { coordinator, wasmConnector, clauseIntervals } from '@uwdata/mosaic-core';
     //@ts-ignore
     import { and, isNotDistinct, literal } from '@uwdata/mosaic-sql';
     //@ts-ignore
@@ -32,11 +32,13 @@
     let generatedURL;
     let stateString = '';
     let displayUpdated = false;
+    let dbInitialized = false;
 
     async function initializeDatabase() {
         connector = wasmConnector();        
         db = await connector.getDuckDB();
         coordinator().databaseConnector(connector);
+        dbInitialized = true;
     }
 
     function clausePoints(fields, value, {
@@ -63,24 +65,26 @@
 
     async function handleURL(){
         const response = await fetch(url);
+        if (!response.ok) {
+            throw new Error(`Error fetching file: ${response.statusText}`);
+        }
+        let fileId = 'f_' + uuidv4().replace(/-/g, '');
         if(url.endsWith(".csv")){
-            if (!response.ok) {
-                throw new Error(`Error fetching CSV: ${response.statusText}`);
-            }
             const csvText = await response.text();
-            db.registerFileText("csv", csvText);
+            await db.registerFileText(fileId, csvText);
             await coordinator().exec([
-                vg.loadCSV(dbId, "csv", { replace: true })
+                vg.loadCSV(dbId, fileId, { replace: true })
             ]);
-            console.log("CSV loaded from URL");            
+            console.log("CSV file with id: " + fileId + " loaded from URL");            
         } else if(url.endsWith(".parquet")){
             const arrayBuffer = await response.arrayBuffer();
             const uint8Array = new Uint8Array(arrayBuffer);
 
-            await db.registerFileBuffer('parquet', uint8Array);
+            await db.registerFileBuffer(fileId, uint8Array);
             await coordinator().exec([
-                vg.loadParquet(dbId, "parquet", { replace: true })
+                vg.loadParquet(dbId, fileId, { replace: true })
             ]);
+            console.log("Parquet file with id: " + fileId + " loaded from URL"); 
         }
 
         await getInfo();
@@ -95,7 +99,7 @@
             url = '';
             pushState(window.location.pathname);   
         }
-
+        dbId = 't_' + uuidv4().replace(/-/g, '');
         const file = event.target.files[0];
         if (file) {
             if (file.type === 'text/csv') {
@@ -189,7 +193,7 @@
 
     function saveAsURL() {
         try{
-            if (!brush.clauses[0].source) {
+            if (!brush.clauses[0] || !brush.clauses[0].source) {
                 generatedURL = window.location.href;
                 return;
             }
@@ -233,9 +237,16 @@
         }
     }
 
+    function loadExample(){
+        url = "https://idl.uw.edu/mosaic/data/athletes.parquet";
+        handleURL();
+    }
+    
     const debouncedPushState = debounce(pushState, 200);
 
     onMount(async () => {   
+        await initializeDatabase();
+
         displayUpdated = false;
         generatedURL = window.location.href;
         document.title = "Mosaic Profiler";
@@ -244,14 +255,12 @@
         if (wasReloaded) {
             url = '';
             stateString = '';
-            window.history.pushState(null, "", window.location.pathname);
+            pushState(window.location.pathname);
             sessionStorage.removeItem('reloaded');
         }
         window.addEventListener('beforeunload', () => {
             sessionStorage.setItem('reloaded', 'true');
         });
-
-        await initializeDatabase();
 
         async function handlePopState() {
             const fullURL = window.location.href;
@@ -292,11 +301,11 @@
 
         const callback = function(mutationsList: any, observer: any) {
             for (let mutation of mutationsList) {
-                if (mutation.type === 'attributes' || mutation.type === 'childList' && brush._resolved.length > 0) {
+                if (mutation.type === 'attributes' || (mutation.type === 'childList' 
+                    && brush && brush._resolved.length > 0)) {
                     saveAsURL();
                     debouncedPushState(generatedURL);
-                } 
-                else if(mutation.type === 'attributes'){
+                } else if(mutation.type === 'childList'){
                     stateString = "";
                     url.length > 0 ? 
                     debouncedPushState(`${window.location.origin}${window.location.pathname}#url=${url}`) 
@@ -329,18 +338,28 @@
         </a>
     </div>
 
-    <div class="input-container">
-        <div class="file-input-wrapper">
-            <label class="file-input-label">
-                <input type="file" id="csvFileInput" accept=".csv,.parquet"/>
-                <span>Upload a file</span>
-            </label>
+    {#if dbInitialized}
+        <div class="input-container">
+            <div class="file-input-wrapper">
+                <label class="file-input-label">
+                    <input type="file" id="csvFileInput" accept=".csv,.parquet"/>
+                    <span>Upload a file</span>
+                </label>
+            </div>
+            <span class="or-text">or</span>
+            <div class="url-input-container">
+                <input type="text" class="urlinput" id="url-input" placeholder="Enter URL here" bind:value={url} />
+            </div>
         </div>
-        <span class="or-text">or</span>
-        <div class="url-input-container">
-            <input type="text" class="urlinput" id="url-input" placeholder="Enter URL here" bind:value={url} />
+
+        <button class="example top-right" on:click={loadExample}>example</button>
+
+    {:else}
+        <!-- Display loading indicator while the database is initializing -->
+        <div class="loading-screen">
+            <p>Loading database, please wait...</p>
         </div>
-    </div>
+    {/if}
 
     <div id="profiler">
         {#key key}

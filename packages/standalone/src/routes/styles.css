@@ -39,8 +39,8 @@ div, p, input {
 .input-container {
     display: flex;
     align-items: center;
-    gap: 10px; /* Space between elements */
-    margin-bottom: 10px; /* Decrease space between first line and second line */
+    gap: 10px; 
+    margin-bottom: 10px; 
 }
 .file-input-wrapper {
     position: relative;
@@ -79,7 +79,7 @@ div, p, input {
     display: flex;
     width: 400px;
     flex-direction: column;
-    gap: 5px; /* Space between input and button */
+    gap: 5px; 
 }
 .urlinput {
     padding: 10px;
@@ -90,5 +90,22 @@ div, p, input {
     color: #333;
     background-color: #f0f0f0;
 }
+.example {
+    background: none;
+    border: none;
+    color: inherit; 
+    padding: 0; 
+    font: inherit; 
+    cursor: pointer; 
+}
 
+.example:hover {
+    text-decoration: underline; 
+}
+.top-right {
+    position: fixed; 
+    top: 10px;
+    right: 10px; 
+    z-index: 1000; 
+}
 
